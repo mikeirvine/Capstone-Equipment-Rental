@@ -1,7 +1,3 @@
-'''
-NOTE: THIS FILE IS FOR DAY, WEEK, MONTH
-'''
-
 import pandas as pd
 import numpy as np
 from sklearn.preprocessing import StandardScaler

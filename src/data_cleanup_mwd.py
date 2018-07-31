@@ -45,7 +45,7 @@ df_rev['month'] = pd.to_datetime(df_rev['month'])
 
 ## Drop data up until Oct 2014 (all of nulls in contract start date prior to this)
 
-df_rev = df_rev[df_rev['month'] > '2014-10-01']
+df_rev = df_rev.loc[df_rev['month'] > '2014-10-01', :]
 
 ## Reformat ContractStartDate date columns and drop 2013/2014 start dates
 
@@ -90,10 +90,6 @@ df_rev.fillna(0, inplace=True)
 df_rev = df_rev[df_rev['hours'] == 0]
 df_rev.drop(['hourly_revenue', 'hourly_book_revenue', 'hours'], axis=1, inplace=True)
 
-# Remove excessmileagerevenue and unclassifiedrevenue (< 300 records have these filled)
-
-df_rev.drop(['excessmileagerevenue', 'unclassifiedrevenue'], axis=1, inplace=True)
-
 # Change column to a numeric column
 
 df_rev['location_code'] = pd.to_numeric(df_rev['location_code'])
@@ -128,6 +124,14 @@ conditions = [
 choices = ['daily', 'weekly', 'monthly']
 df_rev['rental_type'] = np.select(conditions, choices, default='NA')
 
+# Remove unclassified revenue records (< 300 records total
+
+df_rev = df_rev.loc[df_rev['rental_type'] != 'NA', :]
+
+# Remove excessmileagerevenue and unclassifiedrevenue (< 300 records have these filled)
+
+df_rev.drop(['excessmileagerevenue', 'unclassifiedrevenue'], axis=1, inplace=True)
+
 # create contract start month, year, and year_month columns
 
 df_rev['contract_start_year'] = df_rev['contractstartdate'].dt.year
@@ -138,54 +142,61 @@ df_rev['contract_start_year_month'] = pd.to_datetime(df_rev['contractstartdate']
 
 df_rev['units_rented'] = 1
 
-# Create month dataset and price per month feature
+# create total days rented column for daily, weekly, monthl rentals
 
-df_month = df_rev.loc[df_rev['rental_type'] == 'monthly', :]
-df_month_agg = df_month.groupby(['product_type', 'contract_start_year_month', 'contract_start_year', 'contract_start_month']).agg({'rental_revenue':'sum', 'months': 'sum', 'monthly_revenue': 'sum', 'units_rented':'count'}).reset_index()
-# df_month_agg = df_month.groupby(['product_type', 'contract_start_year_month', 'contract_start_month']).agg({'rental_revenue':'sum', 'months': 'sum', 'monthly_revenue': 'sum', 'units_rented':'count'}).reset_index()
-df_month_agg['avg_price_per_month'] = df_month_agg['monthly_revenue'] / df_month_agg['months']
-df_month_agg.drop('monthly_revenue', axis=1, inplace=True)
-#df_month_agg.rename(columns={'months': 'total_months_rented'}, inplace=True)
+for idx, row in df_rev.iterrows():
+    if row['rental_type'] == 'daily':
+        df_rev.loc[idx, 'total_days_rented'] = row['days']
+    elif row['rental_type'] == 'weekly':
+        df_rev.loc[idx, 'total_days_rented'] = row['weeks'] * 6
+    elif row['rental_type'] == 'monthly':
+        df_rev.loc[idx, 'total_days_rented'] = row['months'] * 28
+
+# Create aggregated dataset and price per day
+
+df_agg = df_rev.groupby(['product_type', 'contract_start_year_month', 'contract_start_year', 'contract_start_month', 'rental_type']).agg({'rental_revenue':'sum', 'total_days_rented': 'sum', 'units_rented':'count'}).reset_index()
+df_agg['avg_price_per_day'] = df_agg['rental_revenue'] / df_agg['total_days_rented']
 
 # Create lag columns (prior month units rented, revenue, etc.)
 
-df_month_agg.sort_values('contract_start_year_month', inplace=True)
-df_month_agg.reset_index(drop=True, inplace=True)
+df_agg.sort_values('contract_start_year_month', inplace=True)
+df_agg.reset_index(drop=True, inplace=True)
 
 def get_month_lag(df, row):
     lag_date = row['contract_start_year_month'] - 1 * MonthBegin()
-    mask = (lag_date == df.loc[:, 'contract_start_year_month']) & (row['product_type'] == df.loc[:, 'product_type'])
+    mask = (lag_date == df.loc[:, 'contract_start_year_month']) & (row['product_type'] == df.loc[:, 'product_type']) & (row['rental_type'] == df.loc[:, 'rental_type'])
     lag_df = df.loc[mask, :]
     return lag_df
 
-df_month_agg['prior_month_rental_revenue'] = 0
-df_month_agg['prior_month_total_days_rented'] = 0
-df_month_agg['prior_month_units_rented'] = 0
-df_month_agg['prior_month_avg_price'] = 0
+df_agg['prior_month_rental_revenue'] = 0
+df_agg['prior_month_total_days_rented'] = 0
+df_agg['prior_month_units_rented'] = 0
+df_agg['prior_month_avg_price_per_day'] = 0
 
-for idx, row in df_month_agg.iterrows():
-    lag_df = get_month_lag(df_month_agg, row)
+for idx, row in df_agg.iterrows():
+    lag_df = get_month_lag(df_agg, row)
     if lag_df.empty:
-        df_month_agg.loc[idx, 'prior_month_rental_revenue'] = None
-        df_month_agg.loc[idx, 'prior_month_days_rented'] = None
-        df_month_agg.loc[idx, 'prior_month_units_rented'] = None
-        df_month_agg.loc[idx, 'prior_month_avg_price'] = None
+        df_agg.loc[idx, 'prior_month_rental_revenue'] = None
+        df_agg.loc[idx, 'prior_month_total_days_rented'] = None
+        df_agg.loc[idx, 'prior_month_units_rented'] = None
+        df_agg.loc[idx, 'prior_month_avg_price_per_day'] = None
     else:
-        df_month_agg.loc[idx, 'prior_month_rental_revenue'] = lag_df['rental_revenue'].values
-        df_month_agg.loc[idx, 'prior_month_total_days_rented'] = (lag_df['months'] * 28).values
-        df_month_agg.loc[idx, 'prior_month_units_rented'] = lag_df['units_rented'].values
-        df_month_agg.loc[idx, 'prior_month_avg_price'] = lag_df['avg_price_per_month'].values
+        df_agg.loc[idx, 'prior_month_rental_revenue'] = lag_df['rental_revenue'].values
+        df_agg.loc[idx, 'prior_month_total_days_rented'] = lag_df['total_days_rented'].values
+        df_agg.loc[idx, 'prior_month_units_rented'] = lag_df['units_rented'].values
+        df_agg.loc[idx, 'prior_month_avg_price_per_day'] = lag_df['avg_price_per_day'].values
 
 # remove October 2014 data as there is no prior month
-df_month_agg = df_month_agg.loc[df_month_agg['contract_start_year_month'] > '2014-10-01', :]
+df_agg = df_agg.loc[df_agg['contract_start_year_month'] > '2014-10-01', :]
+df_agg.reset_index(drop=True, inplace=True)
 
 # fill NaNs for prior month features with zeros as there was no prior month rental revenue
 
-df_month_agg.fillna(0, inplace=True)
+df_agg.fillna(0, inplace=True)
 
 # drop current month columns as we only have prior month to predict
 
-df_month_agg.drop(['rental_revenue', 'months', 'avg_price_per_month'], axis=1, inplace=True)
+df_agg.drop(['rental_revenue', 'total_days_rented', 'avg_price_per_day'], axis=1, inplace=True)
 
 # Dummy function
 
@@ -198,20 +209,22 @@ def create_dummies(dummy_col, df, col_prefix):
 
 # Create dummies
 
-df_month_agg = create_dummies('product_type', df_month_agg, 'product_type')
-df_month_agg = create_dummies('contract_start_year', df_month_agg, 'contract_start_year')
-df_month_agg = create_dummies('contract_start_month', df_month_agg, 'contract_start_month')
+df_agg = create_dummies('product_type', df_agg, 'product_type')
+df_agg = create_dummies('contract_start_year', df_agg, 'contract_start_year')
+df_agg = create_dummies('contract_start_month', df_agg, 'contract_start_month')
+df_agg = create_dummies('rental_type', df_agg, 'rental_type')
+
 
 # create train / test sets (test will be May 2017 - April 2018)
 # (train will be Nov 2014 - April 2017) note: may-july 2018 look sparse
 
-df_month_agg = df_month_agg.loc[df_month_agg['contract_start_year_month'] < '2018-05-01', :]
+df_agg = df_agg.loc[df_agg['contract_start_year_month'] < '2018-05-01', :]
 
-df_month_agg_test = df_month_agg.loc[df_month_agg['contract_start_year_month'] >= '2017-05-01', :]
-df_month_agg_train = df_month_agg.loc[df_month_agg['contract_start_year_month'] < '2017-05-01', :]
+df_agg_test = df_agg.loc[df_agg['contract_start_year_month'] >= '2017-05-01', :]
+df_agg_train = df_agg.loc[df_agg['contract_start_year_month'] < '2017-05-01', :]
 
-df_month_agg_test.drop('contract_start_year_month', axis=1, inplace=True)
-df_month_agg_train.drop('contract_start_year_month', axis=1, inplace=True)
+df_agg_test.drop('contract_start_year_month', axis=1, inplace=True)
+df_agg_train.drop('contract_start_year_month', axis=1, inplace=True)
 
 ## model functions
 
@@ -225,10 +238,11 @@ def calc_rmse(true, predicted):
 
 # Create X,y matrices
 
-X_train = df_month_agg_train.drop('units_rented', axis=1).values
-y_train = df_month_agg_train['units_rented'].values
-X_test = df_month_agg_test.drop('units_rented', axis=1).values
-y_test = df_month_agg_test['units_rented'].values
+X_train = df_agg_train.drop('units_rented', axis=1).values
+y_train = df_agg_train['units_rented'].values
+X_test = df_agg_test.drop('units_rented', axis=1).values
+y_test = df_agg_test['units_rented'].values
+
 
 # Standardize data
 
@@ -256,6 +270,12 @@ print(lin_rmse)
 
 print("Linear RMSE train results: {}".format(rmse_linear_train))
 print("Linear RMSE test results: {}".format(rmse_linear_test))
+
+X_train_std_wconst = sm.add_constant(X_train_std)
+X_test_std_wconst = sm.add_constant(X_test_std)
+ols = sm.OLS(y_train, X_train_std_wconst).fit()
+print(ols.summary())
+y_pred_test_linear_ols = ols.predict(X_test_std_wconst)
 
 # Random Forest
 
