@@ -44,8 +44,8 @@ The data provided includes:
 - Location data (details on the location of each store)
 
 ## Exploratory Data Analysis: <a name="eda"></a>
-### 60
-Given the enormous dataset (125M+ daily unit sales records), I selected a single year and product family to build a sales forecasting model.
+### 60k invoices from the past five years provide enough information to be the core dataset for the demand forecasting model.
+
 An outline of each table is below. My general approach was to use the supplemental datasets (items, holidays, store, etc.) to enrich the transaction dataset, and then select a subset of the data for a particula year and item family to reduce the scope of the model. 
 #### Transaction Dataset: 
 - The main transaction dataset has 125M+ records spanning from Jan 1, 2013 to Aug 15, 2017
