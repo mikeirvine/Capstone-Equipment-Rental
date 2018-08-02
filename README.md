@@ -51,6 +51,7 @@ The data provided includes:
 - Since revenue is consistent, will not need to consider an annual growth rate in the model
 - Seasonality will need to be considered in the model (i.e., the same month of the prior year will be a good predictor for the same month of the current year)
 <img src="https://github.com/mikeirvine/Capstone-Equipment-Rental/blob/master/imgs/rev_units_time.png">
+test
 #### Rental Types:
 - 4100 records, which represent 4100 individual items
 - Features include: item_nbr, class, and perishable
