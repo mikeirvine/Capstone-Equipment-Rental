@@ -26,7 +26,7 @@ Galvanize Data Science Immersive - Denver
 8. [References](#references)
 
 ## Context & Key Question: <a name="context_key_question"></a>
-### How can a construction equipment rental company in the midwest improve equipment demand forecasting so the right equipment is in the right store at the right time?
+### How can a construction equipment rental company in the midwest improve equipment demand forecasting so the right equipment is at the right store location at the right time?
 
 At construction jobsites and industrial plants, companies often rent specialized heavy equipment, rather than own it. The equipment is expensive, specialized, and costly to maintain. Oftentimes, specialized equipment is only needed for a few days or weeks for a particular phase of a construction project, or temporary maintenance shutdown at a plant. So it makes more economic sense to rent the equipment.
 
@@ -35,17 +35,17 @@ What is heavy construction equipment and why is demand forecasting important? Th
 For my module 2 capstone project, I'm developing a demand forecasting model (predict how many of each equipment type is needed by month) for a heavy construction equipment rental company with 8 stores in the midwest.
 
 ## Data Source: <a name="data_source"></a>
-### *Corporación Favorita* provided daily store level sales aggregated by product item number, along with supplemental datasets to enrich the transactional data.
-*Corporación Favorita* provided Kaggle a rich data set for the competition, which included:
-- Daily store level sales aggregated by product item number
-- Product item details including class and whether the item is perishable
-- Store location details including city, state, type and cluster
-- Store transaction details including total transactions per day by store
-- Ecuador holiday dates including national, regional and local holidays (holidays affect store sales)
-- Daily oil prices (Ecuador's economy is oil dependent so oil prices may impact grocery store sales)
+### The equipment rental company provided five years of invoice data (one invoice per piece of equipment rented), along with supplemental datasets to enrich the invoice data.
+
+The data provided includes:
+- Invoices (one invoice per piece of equipment rented) which includes the rental date, type of equipment, type of rental, and revenue. Invoices were provided for the previous five years.
+- Daily equipment data (where each piece of equipment is each day)
+- Product type data (more details on the type of equipment including category and class)
+- Location data (details on the location of each store)
 
 ## Exploratory Data Analysis: <a name="eda"></a>
-### Given the enormous dataset (125M+ daily unit sales records), I selected a single year and product family to build a sales forecasting model.
+### 60
+Given the enormous dataset (125M+ daily unit sales records), I selected a single year and product family to build a sales forecasting model.
 An outline of each table is below. My general approach was to use the supplemental datasets (items, holidays, store, etc.) to enrich the transaction dataset, and then select a subset of the data for a particula year and item family to reduce the scope of the model. 
 #### Transaction Dataset: 
 - The main transaction dataset has 125M+ records spanning from Jan 1, 2013 to Aug 15, 2017
