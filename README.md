@@ -50,12 +50,13 @@ The data provided includes:
 - 20 different categories of equipment - agreed with the company to focus on category 20, which is all of the large equipment types (scissor lifts, boom lifts, etc.) which make up most the revenue
 - For product category 20, there are ~60K invoices, which can be aggregated by month by product type
 - 61 product types for category 20 - further analysis revealed that 17 product types make up 80% of the revenue, and 31 product types make up ~95% of the revenue
+<img src="https://github.com/mikeirvine/Capstone-Equipment-Rental/blob/master/imgs/cat_20_rev.png">
 #### Revenue Analysis: 
 - Revenue and the number of units is consistent over the past five years, but there is significant seasonality
 - Since revenue is consistent, will not need to consider an annual growth rate in the model
 - Seasonality will need to be considered in the model (i.e., the same month of the prior year will be a good predictor for the same month of the current year)
 <img src="https://github.com/mikeirvine/Capstone-Equipment-Rental/blob/master/imgs/rev_units_time.png">
-#### Rental Types:
+#### Rental Type Analysis:
 - Invoices are categorized as monthly, weekly or daily rentals (i.e., rental type)
 - ~60% of rentals are monthly, 20% are weekly, and 20% are daily
 - Will need to consider rental type when predicting units rented
