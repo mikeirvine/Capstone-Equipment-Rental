@@ -102,40 +102,39 @@ Key Highlights of Modeling Approach:
 - Total # of observations for modeling = ~3600 records (after filtering and aggregation)
 - Train / test / split approach: split the data based on time. Training dataset was Nov 2014 - April 2017 (~2600 records) and testing dataset was May 2017 - April 2018 (~1000 records). Note: given the small amount of observations and large amount of features, the data is sparse which introduced challenges with dimensionality
 - Error metric: root mean squared error
-- Types of models:
-    - Linear -
-
-From the 500K records, I took a random sample of 100K to run through each regression model. I setup a kfold cross validation with 5 folds, including a standardization of the feature matrix, to ensure an accurate reading of my error metric. For each regression modeling test, I calculated the Root Mean Squared Error. I modeled the data using standard Linear, Ridge and Lasso regression techniques.
-
-After running the results, I identifed the most important features using a recursive feature selection method in sklearn. The method ranks the features in terms of importance (based on the coefficients). It then attemptes to prune the number of features by focusing on the most importants. The most important features groups include:
-
-- Item Class
-- Item Number
-- Item Perishable
-- Month of Year
-- Store Cluster
-- Store Number
-- Store Type
-- Week of Year
-- Day of Week
-
-According to my models, holidays, oil prices, and promotion status were relatively unimportant compared to the features above.
-
+- Standardization of data: used sklearn's StandardScaler capability to standardize the dataset
+- Types of models: linear, lasso, random forest, gradient boosting, neural network MLP
 
 ## Results: <a name="results"></a>
-### The standard linear regression model produced the best results on the test dataset, with an R-Squared of .54 and an average Root Mean Squared Error of 8.18. Improvements are needed to better predict sales, but the model is predictive and further refinements will yield better results.
+### The random forest model produced the best results on the test dataset, with an R-Squared of .83 and a root mean squared error of 10.46 units rented. These results slightly beat the same month average rmse of 11.19, which indicates there is some added predictive value of using additional features to predict demand, rather than just a simple same month average.
 
-SPARSE DATA!
+Summary results by model on test dataset:
 
-The results indicate the a linear regression model to predict unit sales is feasible, and with further refinements to the model, accuracy of the model could be improved. The Root Mean Squared Error (RMSE) results for each model are below.
+|Model |    RMSE 
+|-------|-------------|
+|Linear  |  11.17 |
+|Lasso |      11.18 |
+|Random Forest    |      10.46 |
+|Gradient Boosting     |    12.68  |
+|MLP      |     12.19  |
+|Same Month Avg      |     11.19  |
 
-Linear RMSE test results: 8.19
+After talking to the company, I learned that the same month of the prior year is likely the best predictor of current month demand. A correlation matrix (see below) proved this. The same month feature have the highest correlation to the target variable. An interesting finding though is that daily / weekly rentals, and prior month avg price are negatively correlated to units rented, meaning they may drive demand lower.
 
-Linear R squared results: 0.54
+|Feature       |          Correlation    |
+|--------------|-------------------------|
+|units_rented    |                 1|
+|same_month_avg_units_rented   |   0.94|
+|same_month_avg_days_rented   |    0.89|
+|prior_month_units_rented    |     0.82|
+|prior_month_total_days_rented  |  0.78|
+|rental_type_daily           |    -0.16|
+|rental_type_weekly           |   -0.17|
+|prior_month_avg_price_per_day |  -0.18|
 
-Lasso RMSE test results: 8.20 with alpha of 0.05
+Given that the same month avg units rented is such a strong predictor of current month demand, the challenge is for my model to beat this single predictor. The graphs below compare the actual units to the predicted units for random forest, linear and the same month average. Random forest has a slightly lower RMSE and visually looks to beat the same month average.
 
-Ridge RMSE test results: 8.20 with alpha of 0.1
+<img src="https://github.com/mikeirvine/Capstone-Equipment-Rental/blob/master/imgs/pred_v_acts_time.png">
 
 I used the regularization models, Lasso and Ridge, to attempt to reduce the magnitude of the coefficients in the case of overfitting. However, I found that the larger the alphas, the worse the scores for the models. This shows that the standard linear regression model is not overfitting.
 
