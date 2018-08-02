@@ -12,7 +12,7 @@ Galvanize Data Science Immersive - Denver
 ## Executive Summary
 - Text
 
-<img src="https://github.com/mikeirvine/Capstone-Equipment-Rental/blob/master/imgs/Boom_lift.jpg" width="300" height="300"> <img src="https://github.com/mikeirvine/Capstone-Equipment-Rental/blob/master/imgs/scissor_lift.jpg" width="300" height="400">
+<img src="https://github.com/mikeirvine/Capstone-Equipment-Rental/blob/master/imgs/Boom_lift.jpg" width="300" height="300"> <img src="https://github.com/mikeirvine/Capstone-Equipment-Rental/blob/master/imgs/scissor_lift.jpg" width="300" height="300">
 
 ## Table of Contents
 
