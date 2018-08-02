@@ -14,7 +14,7 @@ Galvanize Data Science Immersive - Denver
 
 ![alt text](https://github.com/mikeirvine/Capstone-Equipment-Rental/blob/master/imgs/Boom_lift.jpg = 250x250)
 
-<img src="https://github.com/mikeirvine/Capstone-Equipment-Rental/blob/master/imgs/Boom_lift.jpg" alt="alt text" width="200" height="400">
+<img src="https://github.com/mikeirvine/Capstone-Equipment-Rental/blob/master/imgs/Boom_lift.jpg" width="300" height="300">
 
 ## Table of Contents
 
