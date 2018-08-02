@@ -44,111 +44,66 @@ The data provided includes:
 - Location data (details on the location of each store)
 
 ## Exploratory Data Analysis: <a name="eda"></a>
-### 60k invoices for product category 20 (large equipment) from the past five years provide enough information to be the core dataset for the demand forecasting model.
+### After EDA, we agreed to focus on company-wide equipment demand for a subset of the large equipment category.
 
-#### Equipment Types:
-- 20 different categories of equipment - agreed with the company to focus on category 20, which is all of the large equipment types (scissor lifts, boom lifts, etc.) which make up most the revenue
+#### Equipment Type Analysis:
+- 20 different categories of equipment - 
 - For product category 20, there are ~60K invoices, which can be aggregated by month by product type
 - 61 product types for category 20 - further analysis revealed that 17 product types make up 80% of the revenue, and 31 product types make up ~95% of the revenue
 <img src="https://github.com/mikeirvine/Capstone-Equipment-Rental/blob/master/imgs/cat_20_rev.png">
+
 #### Revenue Analysis: 
 - Revenue and the number of units is consistent over the past five years, but there is significant seasonality
 - Since revenue is consistent, will not need to consider an annual growth rate in the model
 - Seasonality will need to be considered in the model (i.e., the same month of the prior year will be a good predictor for the same month of the current year)
+- Rentals are attributed to 8 different office branches, plus a few sub-branches
 <img src="https://github.com/mikeirvine/Capstone-Equipment-Rental/blob/master/imgs/rev_units_time.png">
+
 #### Rental Type Analysis:
 - Invoices are categorized as monthly, weekly or daily rentals (i.e., rental type)
 - ~60% of rentals are monthly, 20% are weekly, and 20% are daily
 - Will need to consider rental type when predicting units rented
 
+#### Approach - *focus on company-wide equipment demand for a subset of the large equipment category*:
+- Agreed with the company to focus on category 20, which is all of the large equipment types (scissor lifts, boom lifts, etc.) which make up most the revenue
+- Since 30 product types (of 60 total) in category 20 make up ~95% of the revenue, will reduce scope of model to the 30 top product types
+- Aggregating invoices by month and a subset of product category 20 leaves only ~3600 records across the company. Data is too limited to also aggregate by branch office, so model will attempt to predict equipment demand across the company.
+- Since this is a time series model, the train dataset period (Nov 2014 - April 2017) will be used to predict the test dataset period (May 2017 - April 2018)
 
-#### Approach - *focus on a single year, single item family*:
-Given the large dataset, I decided to reduce the scope and focus on a single year and item family. I selected the 'MEATS' item family from August 2015 - August 2016 to be my training and test dataset.
-
-The items dataset included 33 item families:
-
-- ['GROCERY I',
- 'CLEANING',
- 'BREAD/BAKERY',
- 'DELI',
- 'POULTRY',
- 'EGGS',
- 'PERSONAL CARE',
- 'LINGERIE',
- 'BEVERAGES',
- 'AUTOMOTIVE',
- 'DAIRY',
- 'GROCERY II',
- 'MEATS',
- 'FROZEN FOODS',
- 'HOME APPLIANCES',
- 'SEAFOOD',
- 'PREPARED FOODS',
- 'LIQUOR,WINE,BEER',
- 'BEAUTY',
- 'HARDWARE',
- 'LAWN AND GARDEN',
- 'PRODUCE',
- 'HOME AND KITCHEN II',
- 'HOME AND KITCHEN I',
- 'MAGAZINES',
- 'HOME CARE',
- 'PET SUPPLIES',
- 'BABY CARE',
- 'SCHOOL AND OFFICE SUPPLIES',
- 'PLAYERS AND ELECTRONICS',
- 'CELEBRATION',
- 'LADIESWEAR',
- 'BOOKS']
-
-Only selecting the 'MEATS' item family reduced the datasize to ~500k records. Key descriptive statistics for the target variable, 'unit_sales' below:
+Only selecting a subset of product category 20 reduced the dataset to ~3600 records after aggregated by product type and month. Key descriptive statistics for the target variable, 'units_rented' below:
 
 |Stat |    Value 
 |-------|----------------|
-|count  |  574203.00 |
-|mean |        11.94 |
-|std    |      32.96 |
-|min     |    -44.26  |
-|25%      |     2.52  |
-|50%       |    5.30  |
-|75%      |    11.61  |
-|max      |  5357.83  |
-
-Because of some extreme outliers (12 data points > 1000 unit_sales) that are several standard deviations away from the mean, I decided to remove them from the dataset. Any data point +/- 2 standard deviations from the mean was removed. The table and histogram below shows details for the unit_sales for the MEATS item family after the outliers are removed. The mean is now 9.46 unit sales per day per store, a standard deviation of ~12, and a max value of 77.86.
-
-|Stat |    Value 
-|-------|----------------|
-|count |   563817.00 |
-|mean   |       9.46 |
-|std    |      11.97 |
-|min    |       0.00 |
-|25%    |       2.48 |
-|50%    |       5.17 |
-|75%    |     11.04 |
-|max    |      77.86 |
-
-![alt text](https://github.com/mikeirvine/Capstone-Ecuador-Grocery/blob/master/images/hist_unitsales.png)
+|count  |  3668 |
+|mean |        15.6 |
+|std    |      24.6 |
+|min     |    1  |
+|25%      |     4  |
+|50%       |    8  |
+|75%      |    17  |
+|max      |  300  |
 
 
 ## Feature Engineering: <a name="feature_eng"></a>
-### 249 features were created after merging datasets to enrich the transaction data and creating dummy variables for all the categorical features.
-All of the supplemental datasets could be merged with the transaction dataset using date, item_nbr or store_nbr. This allowed me to enrich the transaction data set with item, store, holiday, and oil price features. Prior to merging, I had to engineer several features across the datasets to ensure the features added value to the model. Key engineered features include:
-#### Store Transactions Dataset:
-- Created a feature for the daily average transaction count by store to serve as a proxy for store size, an important factor in sales
-#### Holidays Dataset:
-- Created a holiday eve feature, which is the day before a holiday when sales likely spike as families prepare for holiday meals
-- Needed to break apart local, regional and national holiday dates into separate dataframes
+### 58 features were created after engineering new features and creating dummy variables for the categorical features.
+The invoice dataset had enough information to build the model, but a few new features needed to be engineered to improve the model. Key engineered features include:
+- Units rented: each invoice represented a single unit that was rented - created this feature as the target variable
+- Prior month features (revenue, units rented, avg price / day): since this is a time series model, prior month features were created to predict the current month
+- Rental type: categorized each invoice as daily, weekly, or monthly
+- Same month, prior year features (avg units rented, avg days rented): given the seasonality of the business, created new features for the avg units rented and avg days rented for each month (e.g., avg units rented and avg days rented for February). Note: to avoid leakage, I only created these features using the train dataset time period (Nov 2014 - April 2017).
+- Categorical features: created categorical features for each month and the 30 product types
 
-After creating these features in the supplemental datasets, I merged all of the supplemental datasets into the master transaction dataset to enrich it with new features.
-
-### Feature Engineering in Merged Dataset
-- Created day of week, month of year, and week of year features to replace the date feature
-- Identified all categorical variables to create dummies, including store_nbr, item_nbr, item_class, date features, store type, store cluster
-
-The final dataset for modeling had 249 features, mostly due to the dummies. For example, there are 83 dummy features for the MEATS category alone due to the number of different meat related items for sale.
+The final dataset for modeling had 58 features, mostly due to the categorical features.
 
 ## Modeling: <a name="modeling"></a>
-### Different variations of linear regression with cross validation were used to try to find the best fit, including standard linear, lasso and ridge techniques
+### Different types of regression models (linear, lasso, random forest, gradient boosting, and an MLP neural network) were used to try to find the best predictor units rented.
+
+Key Highlights of Modeling Approach:
+- Total # of observations for modeling = ~3600 records (after filtering and aggregation)
+- Train / test / split approach: split the data based on time. Training dataset was Nov 2014 - April 2017 (~2600 records) and testing dataset was May 2017 - April 2018 (~1000 records). Note: given the small amount of observations and large amount of features, the data is sparse which introduced challenges with dimensionality
+- Error metric: root mean squared error
+- Types of models:
+    - Linear -
 
 From the 500K records, I took a random sample of 100K to run through each regression model. I setup a kfold cross validation with 5 folds, including a standardization of the feature matrix, to ensure an accurate reading of my error metric. For each regression modeling test, I calculated the Root Mean Squared Error. I modeled the data using standard Linear, Ridge and Lasso regression techniques.
 
@@ -169,6 +124,8 @@ According to my models, holidays, oil prices, and promotion status were relative
 
 ## Results: <a name="results"></a>
 ### The standard linear regression model produced the best results on the test dataset, with an R-Squared of .54 and an average Root Mean Squared Error of 8.18. Improvements are needed to better predict sales, but the model is predictive and further refinements will yield better results.
+
+SPARSE DATA!
 
 The results indicate the a linear regression model to predict unit sales is feasible, and with further refinements to the model, accuracy of the model could be improved. The Root Mean Squared Error (RMSE) results for each model are below.
 
