@@ -44,31 +44,22 @@ The data provided includes:
 - Location data (details on the location of each store)
 
 ## Exploratory Data Analysis: <a name="eda"></a>
-### 60k invoices from the past five years provide enough information to be the core dataset for the demand forecasting model.
+### 60k invoices for product category 20 (large equipment) from the past five years provide enough information to be the core dataset for the demand forecasting model.
 
+#### Equipment Types:
+- 20 different categories of equipment - agreed with the company to focus on category 20, which is all of the large equipment types (scissor lifts, boom lifts, etc.) which make up most the revenue
+- For product category 20, there are ~60K invoices, which can be aggregated by month by product type
+- 61 product types for category 20 - further analysis revealed that 17 product types make up 80% of the revenue, and 31 product types make up ~95% of the revenue
 #### Revenue Analysis: 
 - Revenue and the number of units is consistent over the past five years, but there is significant seasonality
 - Since revenue is consistent, will not need to consider an annual growth rate in the model
 - Seasonality will need to be considered in the model (i.e., the same month of the prior year will be a good predictor for the same month of the current year)
 <img src="https://github.com/mikeirvine/Capstone-Equipment-Rental/blob/master/imgs/rev_units_time.png">
-test
 #### Rental Types:
-- 4100 records, which represent 4100 individual items
-- Features include: item_nbr, class, and perishable
-- All features are categorical
-#### Equipment Types:
-- 54 records, which represent 54 store locations
-- Features include: store_nbr and cluster, both of which are categorical
-#### Store Transactions Dataset:
-- 100k+ records, which represent the total daily transactions by store by day from Jan 1, 2013 to Aug 15, 2017
-- Features include: store_nbr and transactions
-#### Holidays Dataset:
-- 300+ records, which represent each holiday from Jan 1, 2013 to Aug 15, 2017
-- Features include: date, type, locale, locale name and description
-- The locale feature identifies if the holiday is local, regional or national
-#### Oil Dataset:
-- 1200+ records, which represent the daily oil price from Jan 1, 2013 to Aug 15, 2017
-- Features include: daily oil price
+- Invoices are categorized as monthly, weekly or daily rentals (i.e., rental type)
+- ~60% of rentals are monthly, 20% are weekly, and 20% are daily
+- Will need to consider rental type when predicting units rented
+
 
 #### Approach - *focus on a single year, single item family*:
 Given the large dataset, I decided to reduce the scope and focus on a single year and item family. I selected the 'MEATS' item family from August 2015 - August 2016 to be my training and test dataset.
