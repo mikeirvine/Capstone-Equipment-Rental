@@ -119,7 +119,9 @@ Summary results by model on test dataset:
 |MLP      |     12.19  |
 |Same Month Avg      |     11.19  |
 
-After talking to the company, I learned that the same month of the prior year is likely the best predictor of current month demand. A correlation matrix (see below) proved this. The same month feature have the highest correlation to the target variable. An interesting finding though is that daily / weekly rentals, and prior month avg price are negatively correlated to units rented, meaning they may drive demand lower.
+After talking to the company, I learned that the same month of the prior year is likely the best predictor of current month demand. A correlation matrix (see below) proved this. The same month feature have the highest correlation to the target variable. The lasso model confirms this as well as it zeroed out almost every feature except for the same month average units rented.
+
+An interesting finding though is that daily / weekly rentals, and prior month avg price are negatively correlated to units rented, meaning they may drive demand lower.
 
 |Feature       |          Correlation    |
 |--------------|-------------------------|
@@ -132,6 +134,14 @@ After talking to the company, I learned that the same month of the prior year is
 |rental_type_weekly           |   -0.17|
 |prior_month_avg_price_per_day |  -0.18|
 
+The random forest feature importances supported the same findings as the correlation matrix. Below is the feature importance rank.
+
+1. same_month_avg_units_rented
+2. same_month_avg_days_rented
+3. prior_month_total_days_rented
+4. prior_month_units_rented
+5. product_type_20-220
+
 Given that the same month avg units rented is such a strong predictor of current month demand, the challenge is for my model to beat this single predictor. The graphs below compare the actual units to the predicted units for random forest, linear and the same month average. Random forest has a slightly lower RMSE and visually looks to beat the same month average.
 
 <img src="https://github.com/mikeirvine/Capstone-Equipment-Rental/blob/master/imgs/pred_v_acts_time.png">
@@ -141,19 +151,12 @@ Even though the random forest rmse beats the same month average, the error is st
 <img src="https://github.com/mikeirvine/Capstone-Equipment-Rental/blob/master/imgs/random_forest_residuals.png">
 
 ## Future Work: <a name="future_work"></a>
-### There is opportunity to improve the model on the MEATS item family prior to applying it to all item families and time periods.
-
-I WOULD LIKE TO BREAK THE MODEL UP IN MONTH/WEEK DAY
+### There is opportunity to improve the model, but more investigation and analysis is needed.
 
 Additional work is need on the model to yield better results. There are a few questions I would investigate first to improve the model, including:
-- What is the issue with the diagonal trend line in the residuals? Are there some zero values I need to adjust?
-- Are there any other outliers or leverage points impacting the effectiveness of the model?
+- Why is the model having difficulty predicting larger amounts of units rented?
+- Is mixing daily, weekly, monthly rental types into one model making the model worse? Can I improve predictions if I create three separate models for each rental type (monthly, weekly, daily)?
+- Are there outliers or leverage points impacting the effectiveness of the model?
 - What other features could be engineered to add to the model?
 - What other linear regression modeling techniques could be tested?
-- Are some features collinear and need to be removed?
-
-
-## References: <a name="references"></a>
-Below is a link to the Kaggle competition with the datasets.
-[Kaggle competition link](https://www.kaggle.com/c/favorita-grocery-sales-forecasting)
-
+- Some of the features are collinear, so would removing some features improve the model's predictions?
