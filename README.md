@@ -46,88 +46,41 @@ The data provided includes:
 ## Exploratory Data Analysis: <a name="eda"></a>
 ### 60k invoices for product category 20 (large equipment) from the past five years provide enough information to be the core dataset for the demand forecasting model.
 
-#### Equipment Types:
-- 20 different categories of equipment - agreed with the company to focus on category 20, which is all of the large equipment types (scissor lifts, boom lifts, etc.) which make up most the revenue
+#### Equipment Type Analysis:
+- 20 different categories of equipment - 
 - For product category 20, there are ~60K invoices, which can be aggregated by month by product type
 - 61 product types for category 20 - further analysis revealed that 17 product types make up 80% of the revenue, and 31 product types make up ~95% of the revenue
 <img src="https://github.com/mikeirvine/Capstone-Equipment-Rental/blob/master/imgs/cat_20_rev.png">
+
 #### Revenue Analysis: 
 - Revenue and the number of units is consistent over the past five years, but there is significant seasonality
 - Since revenue is consistent, will not need to consider an annual growth rate in the model
 - Seasonality will need to be considered in the model (i.e., the same month of the prior year will be a good predictor for the same month of the current year)
+- Rentals are attributed to 8 different office branches, plus a few sub-branches
 <img src="https://github.com/mikeirvine/Capstone-Equipment-Rental/blob/master/imgs/rev_units_time.png">
+
 #### Rental Type Analysis:
 - Invoices are categorized as monthly, weekly or daily rentals (i.e., rental type)
 - ~60% of rentals are monthly, 20% are weekly, and 20% are daily
 - Will need to consider rental type when predicting units rented
 
+#### Approach - *focus on company-wide equipment demand, for a subset of the large equipment category (category 20)*:
+- Agreed with the company to focus on category 20, which is all of the large equipment types (scissor lifts, boom lifts, etc.) which make up most the revenue
+- Since 30 product types (of 60 total) in category 20 make up ~95% of the revenue, will reduce scope of model to the 30 top product types
+- Aggregating invoices by month and a subset of product category 20 leaves only ~3600 records across the company. Data is too limited to also aggregate by branch office, so model will attempt to predict equipment demand across the company.
 
-#### Approach - *focus on a single year, single item family*:
-Given the large dataset, I decided to reduce the scope and focus on a single year and item family. I selected the 'MEATS' item family from August 2015 - August 2016 to be my training and test dataset.
-
-The items dataset included 33 item families:
-
-- ['GROCERY I',
- 'CLEANING',
- 'BREAD/BAKERY',
- 'DELI',
- 'POULTRY',
- 'EGGS',
- 'PERSONAL CARE',
- 'LINGERIE',
- 'BEVERAGES',
- 'AUTOMOTIVE',
- 'DAIRY',
- 'GROCERY II',
- 'MEATS',
- 'FROZEN FOODS',
- 'HOME APPLIANCES',
- 'SEAFOOD',
- 'PREPARED FOODS',
- 'LIQUOR,WINE,BEER',
- 'BEAUTY',
- 'HARDWARE',
- 'LAWN AND GARDEN',
- 'PRODUCE',
- 'HOME AND KITCHEN II',
- 'HOME AND KITCHEN I',
- 'MAGAZINES',
- 'HOME CARE',
- 'PET SUPPLIES',
- 'BABY CARE',
- 'SCHOOL AND OFFICE SUPPLIES',
- 'PLAYERS AND ELECTRONICS',
- 'CELEBRATION',
- 'LADIESWEAR',
- 'BOOKS']
-
-Only selecting the 'MEATS' item family reduced the datasize to ~500k records. Key descriptive statistics for the target variable, 'unit_sales' below:
+Only selecting a subset of product category 20 reduced the dataset to ~3600 records after aggregated by product type and month. Key descriptive statistics for the target variable, 'units_rented' below:
 
 |Stat |    Value 
 |-------|----------------|
-|count  |  574203.00 |
-|mean |        11.94 |
-|std    |      32.96 |
-|min     |    -44.26  |
-|25%      |     2.52  |
-|50%       |    5.30  |
-|75%      |    11.61  |
-|max      |  5357.83  |
-
-Because of some extreme outliers (12 data points > 1000 unit_sales) that are several standard deviations away from the mean, I decided to remove them from the dataset. Any data point +/- 2 standard deviations from the mean was removed. The table and histogram below shows details for the unit_sales for the MEATS item family after the outliers are removed. The mean is now 9.46 unit sales per day per store, a standard deviation of ~12, and a max value of 77.86.
-
-|Stat |    Value 
-|-------|----------------|
-|count |   563817.00 |
-|mean   |       9.46 |
-|std    |      11.97 |
-|min    |       0.00 |
-|25%    |       2.48 |
-|50%    |       5.17 |
-|75%    |     11.04 |
-|max    |      77.86 |
-
-![alt text](https://github.com/mikeirvine/Capstone-Ecuador-Grocery/blob/master/images/hist_unitsales.png)
+|count  |  3668 |
+|mean |        15.6 |
+|std    |      24.6 |
+|min     |    1  |
+|25%      |     4  |
+|50%       |    8  |
+|75%      |    17  |
+|max      |  300  |
 
 
 ## Feature Engineering: <a name="feature_eng"></a>
