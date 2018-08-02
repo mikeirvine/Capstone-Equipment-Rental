@@ -46,16 +46,16 @@ The data provided includes:
 ## Exploratory Data Analysis: <a name="eda"></a>
 ### 60k invoices from the past five years provide enough information to be the core dataset for the demand forecasting model.
 
-An outline of each table is below. My general approach was to use the supplemental datasets (items, holidays, store, etc.) to enrich the transaction dataset, and then select a subset of the data for a particula year and item family to reduce the scope of the model. 
-#### Transaction Dataset: 
-- The main transaction dataset has 125M+ records spanning from Jan 1, 2013 to Aug 15, 2017
-- A record is defined as the unit sales volume (not price) for a particular item number by store by day.
-- Only includes 6 features: id, date, store_nbr, item_nbr, unit_sales, and onpromotion
-#### Items Dataset:
+#### Revenue Analysis: 
+- Revenue and the number of units is consistent over the past five years, but there is significant seasonality
+- Since revenue is consistent, will not need to consider an annual growth rate in the model
+- Seasonality will need to be considered in the model (i.e., the same month of the prior year will be a good predictor for the same month of the current year)
+<img src="https://github.com/mikeirvine/Capstone-Equipment-Rental/blob/master/imgs/rev_units_time.png">
+#### Rental Types:
 - 4100 records, which represent 4100 individual items
 - Features include: item_nbr, class, and perishable
 - All features are categorical
-#### Stores Dataset:
+#### Equipment Types:
 - 54 records, which represent 54 store locations
 - Features include: store_nbr and cluster, both of which are categorical
 #### Store Transactions Dataset:
