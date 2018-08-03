@@ -49,7 +49,7 @@ The data provided includes:
 ### After EDA, we agreed to focus on company-wide equipment demand for a subset of the large equipment category.
 
 #### Equipment Type Analysis:
-- 20 different categories of equipment - 
+- 20 different categories of equipment (category 20 is the large equipment category, making up most the revenue)
 - For product category 20, there are ~60K invoices, which can be aggregated by month by product type
 - 61 product types for category 20 - further analysis revealed that 17 product types make up 80% of the revenue, and 31 product types make up ~95% of the revenue
 <img src="https://github.com/mikeirvine/Capstone-Equipment-Rental/blob/master/imgs/cat_20_rev.png">
