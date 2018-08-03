@@ -72,7 +72,7 @@ The data provided includes:
 - Aggregating invoices by month and a subset of product category 20 leaves only ~3600 records across the company. Data is too limited to also aggregate by branch office, so model will attempt to predict equipment demand across the company.
 - Since this is a time series model, the train dataset period (Nov 2014 - April 2017) will be used to predict the test dataset period (May 2017 - April 2018)
 
-Only selecting a subset of product category 20 reduced the dataset to ~3600 records after aggregated by product type and month. Key descriptive statistics for the target variable, 'units_rented' below:
+Only selecting a subset of product category 20 reduced the dataset to ~3600 records after aggregating by product type and month. Key descriptive statistics for the target variable, 'units_rented' below:
 
 |Stat |    Value 
 |-------|----------------|
