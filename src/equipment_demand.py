@@ -59,7 +59,6 @@ def add_features(df):
     - Rental type to categorize invoices as daily, weekly or monthly
     - Contract start month, year and year-month (seasonality is a major factor)
     - Units rented, which is the target variable (each invoice is one unit)
-    - Total total_days_rented, which represents total days rented for all invoices regardless of invoice type
 
     Input: dataframe where features will be added
 
@@ -83,18 +82,123 @@ def add_features(df):
     # units_rented features (target variable)
     df.loc[:, 'units_rented'] = 1
 
-    # create total days rented column for daily, weekly, monthly rentals
-    # for idx, row in df.iterrows():
-    #     if row['rental_type'] == 'daily':
-    #         df.loc[idx, 'total_days_rented'] = row['days']
-    #     elif row['rental_type'] == 'weekly':
-    #         df.loc[idx, 'total_days_rented'] = row['weeks'] * 6
-    #     elif row['rental_type'] == 'monthly':
-    #         df.loc[idx, 'total_days_rented'] = row['months'] * 28
-
     return df
 
+def add_days_rented(df):
+    '''
+    Summary: Create total_days_rented, which represents total days rented for all invoices regardless of invoice type
+
+    Input: dataframe where feature will be added
+
+    Output: dataframe with total_days_rented feature
+    '''
+    for idx, row in df.iterrows():
+        if row['rental_type'] == 'daily':
+            df.loc[idx, 'total_days_rented'] = row['days']
+        elif row['rental_type'] == 'weekly':
+            df.loc[idx, 'total_days_rented'] = row['weeks'] * 6
+        elif row['rental_type'] == 'monthly':
+            df.loc[idx, 'total_days_rented'] = row['months'] * 28
+    return df
+
+def get_month_lag(df, row):
+    '''
+    Summary: Used in the create_month_lag function to grab the prior month data for each record
+
+    Input: dataframe to grab prior month data
+
+    Output: new lag dataframe that contains only data for the prior month for a single record
+    '''
+    lag_date = row['contract_start_year_month'] - 1 * MonthBegin()
+    mask = (lag_date == df.loc[:, 'contract_start_year_month']) & (row['product_type'] == df.loc[:, 'product_type']) & (row['rental_type'] == df.loc[:, 'rental_type'])
+    lag_df = df.loc[mask, :]
+    return lag_df
+
+def create_month_lag(df_agg):
+    '''
+    Summary: Adds prior month data (units rented, days rented, revenue) for every record
+
+    Input: dataframe w/o prior month data
+
+    Output: updated dataframe with prior month data
+    '''
+    for idx, row in df_agg.iterrows():
+        lag_df = get_month_lag(df_agg, row)
+        if lag_df.empty:
+            df_agg.loc[idx, 'prior_month_rental_revenue'] = 0
+            df_agg.loc[idx, 'prior_month_total_days_rented'] = 0
+            df_agg.loc[idx, 'prior_month_units_rented'] = 0
+            df_agg.loc[idx, 'prior_month_avg_price_per_day'] = 0
+        else:
+            df_agg.loc[idx, 'prior_month_rental_revenue'] = lag_df['rental_revenue'].values
+            df_agg.loc[idx, 'prior_month_total_days_rented'] = lag_df['total_days_rented'].values
+            df_agg.loc[idx, 'prior_month_units_rented'] = lag_df['units_rented'].values
+            df_agg.loc[idx, 'prior_month_avg_price_per_day'] = lag_df['avg_price_per_day'].values
+    return df_agg
+
+def get_month_avg(df, row):
+    '''
+    Summary: Used in the create_same_month_avg function to grab the average data for the month of the selected record
+
+    Input: dataframe w/o same month average data
+
+    Output: new lag dataframe that contains only data for the same month for a single record
+    '''
+    month = row['contract_start_month']
+    mask = (month == df.loc[:, 'contract_start_month']) & (row['product_type'] == df.loc[:, 'product_type']) & (row['rental_type'] == df.loc[:, 'rental_type'])
+    lag_df = df.loc[mask, :]
+    return lag_df
+
+def create_same_month_avg(df_agg, cutoff_date):
+    '''
+    Summary: Adds prior month data (units rented, days rented, revenue) for every record
+
+    Input: cutoff_date (date for same month averages to be considered) and dataframe w/o monthly average data
+
+    Output: updated dataframe with monthly average data. Note: monthly averages only considered before cutoff date (useful to avoid data leakage)
+    '''
+    df_agg_avg_month = df_agg.loc[df_agg['contract_start_year_month'] < cutoff_date, :]
+    df_agg_avg_month = df_agg_avg_month.groupby(['product_type', 'contract_start_month', 'rental_type']).agg({'units_rented': 'mean', 'total_days_rented': 'mean'}).reset_index()
+    for idx, row in df_agg.iterrows():
+        lag_df = get_month_avg(df_agg_avg_month, row)
+        if lag_df.empty:
+            df_agg.loc[idx, 'same_month_avg_units_rented'] = 0
+            df_agg.loc[idx, 'same_month_avg_days_rented'] = 0
+        else:
+            df_agg.loc[idx, 'same_month_avg_units_rented'] = lag_df['units_rented'].values
+            df_agg.loc[idx, 'same_month_avg_days_rented'] = lag_df['total_days_rented'].values
+    return df_agg
+
+def create_dummies(dummy_col, df, col_prefix):
+    '''
+    Summary: Creates dummy features for categorical features
+
+    Input: dummy_col: categorical feature column to create dummies, df: dataframe to add dummies, col_prefix: string to add as prefix to dummy column name
+
+    Output: updated dataframe with categorical features replaced as dummy features
+    '''
+    dum_col = df[dummy_col]
+    dummies = pd.get_dummies(dum_col, prefix=col_prefix)
+    df = df.drop([dummy_col], axis=1)
+    df_w_dummies = df.merge(dummies, left_index=True, right_index=True)
+    return df_w_dummies
+
+def calc_rmse(true, predicted):
+    '''
+    Summary: Calculate root mean squared error
+
+    Input: true: target labels. predicted: predicted labels from model
+
+    Output: root mean squared error metric
+    '''
+    residuals_squared = (predicted - true)**2
+    variance = sum(residuals_squared) / len(true)
+    rmse = np.sqrt(variance)
+    return rmse
+
 if __name__ == '__main__':
+
+    '''LOAD / CLEAN DATA; ENGINEER FEATURES'''
 
     # load data
     df_rev = load_data('/Users/mwirvine/Galvanize/dsi-immersive/one-source-capstone/Data Feeds/ONE - Revenue Data.txt', separator='|')
@@ -108,274 +212,125 @@ if __name__ == '__main__':
 
     ## Drop and reformat columns
     cols_to_drop = ['Client Code', 'Client Region', 'CreditAmount', 'Client District', 'Client Category', 'Country', 'Equipment ID #', 'IsSubstitution', 'Description', 'Transaction ID #', 'IsRPO', 'NationalAcctCode', 'Sales Rep #', 'Sales Rep Name', 'Customer Name', 'Minimums', 'IsNationalAcct', 'IsSpecialPricing', 'IsContract', 'ContractPriceNo', 'CycleBillNo', 'Jobsite ZipCode', 'Branch ZipCode', 'CustomerCorpID', 'Customer #', 'Minimum Revenue', 'Minimum Book Revenue', 'ExcessMileageRevenue', 'UnclassifiedRevenue']
-
     df_rev = drop_reformat_columns(df_rev, cols_to_drop)
 
     # fill NaNs with 0s (can do this because all NaNs represent zero (e.g., if monthly rental has zero weekly revenue, can put weekly rental as 0))
-
     df_rev.fillna(0, inplace=True)
 
-    # add features (rental_type, contract start dates, units rented, days rented)
+    # add features (rental_type, contract start dates, units rented)
     df_rev = add_features(df_rev)
 
-    def add_days_rented(df):
-        for idx, row in df.iterrows():
-            if row['rental_type'] == 'daily':
-                df.loc[idx, 'total_days_rented'] = row['days']
-            elif row['rental_type'] == 'weekly':
-                df.loc[idx, 'total_days_rented'] = row['weeks'] * 6
-            elif row['rental_type'] == 'monthly':
-                df.loc[idx, 'total_days_rented'] = row['months'] * 28
-        return df
-
+    # create total days rented column for daily, weekly, monthly rentals
     df_rev = add_days_rented(df_rev)
 
-    # create total days rented column for daily, weekly, monthly rentals
-
-    # for idx, row in df_rev.iterrows():
-    #     if row['rental_type'] == 'daily':
-    #         df_rev.loc[idx, 'total_days_rented'] = row['days']
-    #     elif row['rental_type'] == 'weekly':
-    #         df_rev.loc[idx, 'total_days_rented'] = row['weeks'] * 6
-    #     elif row['rental_type'] == 'monthly':
-    #         df_rev.loc[idx, 'total_days_rented'] = row['months'] * 28
-
-    # Create aggregated dataset and price per day
-
+    # create aggregated dataset and price per day feature
     df_agg = df_rev.groupby(['product_type', 'contract_start_year_month', 'contract_start_month', 'rental_type']).agg({'rental_revenue':'sum', 'total_days_rented': 'sum', 'units_rented':'sum'}).reset_index()
     df_agg['avg_price_per_day'] = df_agg['rental_revenue'] / df_agg['total_days_rented']
 
-    # Create lag columns (prior month units rented, revenue, etc.)
-
+    # create month lag columns (prior month units rented, prior month total days rented, prior month rental revenue)
     df_agg.sort_values('contract_start_year_month', inplace=True)
     df_agg.reset_index(drop=True, inplace=True)
+    df_agg = create_month_lag(df_agg)
 
-    def get_month_lag(df, row):
-        lag_date = row['contract_start_year_month'] - 1 * MonthBegin()
-        mask = (lag_date == df.loc[:, 'contract_start_year_month']) & (row['product_type'] == df.loc[:, 'product_type']) & (row['rental_type'] == df.loc[:, 'rental_type'])
-        lag_df = df.loc[mask, :]
-        return lag_df
-
-    for idx, row in df_agg.iterrows():
-        lag_df = get_month_lag(df_agg, row)
-        if lag_df.empty:
-            df_agg.loc[idx, 'prior_month_rental_revenue'] = 0
-            df_agg.loc[idx, 'prior_month_total_days_rented'] = 0
-            df_agg.loc[idx, 'prior_month_units_rented'] = 0
-            df_agg.loc[idx, 'prior_month_avg_price_per_day'] = 0
-        else:
-            df_agg.loc[idx, 'prior_month_rental_revenue'] = lag_df['rental_revenue'].values
-            df_agg.loc[idx, 'prior_month_total_days_rented'] = lag_df['total_days_rented'].values
-            df_agg.loc[idx, 'prior_month_units_rented'] = lag_df['units_rented'].values
-            df_agg.loc[idx, 'prior_month_avg_price_per_day'] = lag_df['avg_price_per_day'].values
-
-    # create monthly avg units rented using only train dates
-
-    df_agg_avg_month = df_agg.loc[df_agg['contract_start_year_month'] < '2017-05-01', :]
-    df_agg_avg_month = df_agg_avg_month.groupby(['product_type', 'contract_start_month', 'rental_type']).agg({'units_rented': 'mean', 'total_days_rented': 'mean'}).reset_index()
-
-    def get_month_avg(df, row):
-        month = row['contract_start_month']
-        mask = (month == df.loc[:, 'contract_start_month']) & (row['product_type'] == df.loc[:, 'product_type']) & (row['rental_type'] == df.loc[:, 'rental_type'])
-        lag_df = df.loc[mask, :]
-        return lag_df
-
-    for idx, row in df_agg.iterrows():
-        lag_df = get_month_avg(df_agg_avg_month, row)
-        if lag_df.empty:
-            df_agg.loc[idx, 'same_month_avg_units_rented'] = 0
-            df_agg.loc[idx, 'same_month_avg_days_rented'] = 0
-        else:
-            df_agg.loc[idx, 'same_month_avg_units_rented'] = lag_df['units_rented'].values
-            df_agg.loc[idx, 'same_month_avg_days_rented'] = lag_df['total_days_rented'].values
+    # create same month avg units rented using only train dates
+    train_cutoff_date = '2017-05-01'
+    df_agg = create_same_month_avg(df_agg, train_cutoff_date)
 
     # remove October 2014 data as there is no prior month
     df_agg = df_agg.loc[df_agg['contract_start_year_month'] > '2014-10-01', :]
     df_agg.reset_index(drop=True, inplace=True)
 
     # fill NaNs for prior month features with zeros as there was no prior month rental revenue
-
     df_agg.fillna(0, inplace=True)
 
-    # Dummy function
-
-    def create_dummies(dummy_col, df, col_prefix):
-        dum_col = df[dummy_col]
-        dummies = pd.get_dummies(dum_col, prefix=col_prefix)
-        df = df.drop([dummy_col], axis=1)
-        df_w_dummies = df.merge(dummies, left_index=True, right_index=True)
-        return df_w_dummies
-
-    # Create dummies
-
+    # create dummy features for categorical features
     df_agg = create_dummies('product_type', df_agg, 'product_type')
     df_agg = create_dummies('contract_start_month', df_agg, 'contract_start_month')
     df_agg = create_dummies('rental_type', df_agg, 'rental_type')
 
-
-    # create train / test sets (test will be May 2017 - April 2018)
-    # (train will be Nov 2014 - April 2017) note: may-july 2018 look sparse
-
+    # create train / test sets (test will be May 2017 - April 2018, train will be Nov 2014 - April 2017)
     df_agg = df_agg.loc[df_agg['contract_start_year_month'] < '2018-05-01', :]
-    df_agg.to_pickle('./df_agg.pkl')
-
+    df_agg.to_pickle('/Users/mwirvine/Galvanize/dsi-immersive/Capstone-Equipment-Rental-Data/df_agg.pkl')
     df_agg_test = df_agg.loc[df_agg['contract_start_year_month'] >= '2017-05-01', :]
     df_agg_train = df_agg.loc[df_agg['contract_start_year_month'] < '2017-05-01', :]
 
     # check correlation
-
     corr_matrix = df_agg_train.drop(['rental_revenue', 'total_days_rented', 'avg_price_per_day'], axis=1).corr()
     corr_matrix['units_rented'].sort_values(ascending=False)
 
-    ## model functions
 
-    def calc_rmse(true, predicted):
-        residuals_squared = (predicted - true)**2
-        variance = sum(residuals_squared) / len(true)
-        rmse = np.sqrt(variance)
-        return rmse
 
-    ### Model Execution ###
+    '''EXECUTE MODELS'''
 
-    # Create X,y matrices
-
-    # note - need to drop rental_revenue, 'rental_revenue', 'total_days_rented', 'avg_price_per_day' as those are current month data and cannot predict on them
-
+    # create X,y matrices. Note: need to drop rental_revenue, 'rental_revenue', 'total_days_rented', 'avg_price_per_day' as those are current month data and cannot predict using them
     X_train = df_agg_train.drop(['units_rented', 'contract_start_year_month', 'rental_revenue', 'total_days_rented', 'avg_price_per_day'], axis=1).values
     y_train = df_agg_train['units_rented'].values
     X_test = df_agg_test.drop(['units_rented', 'contract_start_year_month', 'rental_revenue', 'total_days_rented', 'avg_price_per_day'], axis=1).values
     y_test = df_agg_test['units_rented'].values
 
-
-    # Standardize data
-
+    # standardize data
     standardizer = StandardScaler()
     standardizer.fit(X_train, y_train)
     X_train_std = standardizer.transform(X_train)
     X_test_std = standardizer.transform(X_test)
-
     del X_train
     del X_test
 
-    # Linear Regression
-
+    # create model objects
     linear = LinearRegression(n_jobs=-1)
-    linear.fit(X_train_std, y_train)
-    y_pred_train_linear = linear.predict(X_train_std)
-    y_pred_test_linear = linear.predict(X_test_std)
-    r_squared_linear = linear.score(X_train_std, y_train)
-    rmse_linear_train = calc_rmse(y_train, y_pred_train_linear)
-    rmse_linear_test = calc_rmse(y_test, y_pred_test_linear)
+    lasso = Lasso(alpha=.1)
+    rf = RandomForestRegressor(n_estimators=500, max_features='sqrt', n_jobs=-1, min_samples_leaf=4, min_samples_split=8)
+    gbr = GradientBoostingRegressor(n_estimators=1000, max_depth=5, learning_rate=.1, max_features='sqrt', min_samples_leaf=4, min_samples_split=8)
+    models = [(linear, 'Linear'), (lasso, 'Lasso'), (rf, 'Random Forest'), (gbr, 'Gradient Boosting')]
 
-    lin_mse = mean_squared_error(y_test, y_pred_test_linear)
-    lin_rmse = np.sqrt(lin_mse)
-    print(lin_rmse)
+    # run each model, print results, add predictions to test dataframe
+    for model in models:
+        model[0].fit(X_train_std, y_train)
+        y_pred_train = model[0].predict(X_train_std)
+        y_pred_test = model[0].predict(X_test_std)
+        train_mse = mean_squared_error(y_train, y_pred_train)
+        train_rmse = np.sqrt(train_mse)
+        test_mse = mean_squared_error(y_test, y_pred_test)
+        test_rmse = np.sqrt(test_mse)
+        print('{} RMSE train results: {:.3f}'.format(model[1], train_rmse))
+        print('{} RMSE test results: {:.3f}'.format(model[1], test_rmse))
+        df_agg_test.loc[:, 'units_rented_pred_' + model[1]] = y_pred_test
 
-    print("Linear RMSE train results: {}".format(rmse_linear_train))
-    print("Linear RMSE test results: {}".format(rmse_linear_test))
+    # calculate rmse for same month avg units rented as baseline comparison
+    y_pred_train_same_month = df_agg_train.loc[:, 'same_month_avg_units_rented'].values
+    y_pred_test_same_month = df_agg_test.loc[:, 'same_month_avg_units_rented'].values
+    rmse_same_month_train = calc_rmse(y_train, y_pred_train_same_month)
+    rmse_same_month_test = calc_rmse(y_test, y_pred_test_same_month)
+    print("Same Month Avg RMSE train results: {:.3f}".format(rmse_same_month_train))
+    print("Same Month Avg RMSE test results: {:.3f}".format(rmse_same_month_test))
 
-    # code to add predicted values into dataframe
+    # save the final train/test dfs
+    df_agg_test.to_pickle('/Users/mwirvine/Galvanize/dsi-immersive/Capstone-Equipment-Rental-Data/df_agg_test.pkl')
+    df_agg_train.to_pickle('/Users/mwirvine/Galvanize/dsi-immersive/Capstone-Equipment-Rental-Data/df_agg_train.pkl')
 
-    df_agg_test.loc[:, 'units_rented_pred_lin'] = y_pred_test_linear
+
+    '''INVESTIGATE DETAILS OF MODELS'''
 
     # OLS linear regression to look at coefficients
-
     X_train_std_wconst = sm.add_constant(X_train_std)
     X_test_std_wconst = sm.add_constant(X_test_std)
     ols = sm.OLS(y_train, X_train_std_wconst).fit()
     print(ols.summary())
     #y_pred_test_linear_ols = ols.predict(X_test_std_wconst)
-
     ols_res = ols.outlier_test()[:,0]
     y_fitted = ols.fittedvalues
-
     coeffs_ols = ols.params
-
-    features_ols = df_agg_train.drop(['units_rented', 'contract_start_year_month', 'rental_revenue', 'total_days_rented', 'avg_price_per_day'], axis=1).values
-
+    features_ols = df_agg_train.drop(['units_rented', 'contract_start_year_month', 'rental_revenue', 'total_days_rented', 'avg_price_per_day'], axis=1).columns
     coeffs_by_feature = sorted(zip(coeffs_ols, features_ols), reverse=True)
 
-    # Lasso
-
-    lasso = Lasso(alpha=.1)
-    lasso.fit(X_train_std, y_train)
-    y_pred_train_lasso = lasso.predict(X_train_std)
-    y_pred_test_lasso = lasso.predict(X_test_std)
-
-    lasso_train_mse = mean_squared_error(y_train, y_pred_train_lasso)
-    lasso_train_rmse = np.sqrt(lasso_train_mse)
-
-    lasso_test_mse = mean_squared_error(y_test, y_pred_test_lasso)
-    lasso_test_rmse = np.sqrt(lasso_test_mse)
-
-    print("Lasso RMSE train results: {}".format(lasso_train_rmse))
-    print("Lasso RMSE test results: {}".format(lasso_test_rmse))
-
+    # look at coefficients from lasso model
     features_lasso = df_agg_train.drop(['units_rented', 'contract_start_year_month', 'rental_revenue', 'total_days_rented', 'avg_price_per_day'], axis=1).columns
-
     coeffs_lasso = lasso.coef_
-
     coeffs_by_feature_lasso = sorted(zip(coeffs_lasso, features_lasso), reverse=True)
 
 
-    # Random Forest
-
-    rf = RandomForestRegressor(n_estimators=500, max_features='sqrt', n_jobs=-1, min_samples_leaf=4, min_samples_split=8)
-    rf.fit(X_train_std, y_train)
-    y_pred_train_rf = rf.predict(X_train_std)
-    y_pred_test_rf = rf.predict(X_test_std)
-    r_squared_rf = rf.score(X_test_std, y_test)
-    rmse_rf_train = calc_rmse(y_train, y_pred_train_rf)
-    rmse_rf_test = calc_rmse(y_test, y_pred_test_rf)
-
-    print("RF RMSE train results: {}".format(rmse_rf_train))
-    print("RF RMSE test results: {}".format(rmse_rf_test))
-
-    # code to add predicted values into dataframe
-
-    df_agg_test.loc[:, 'units_rented_pred_rf'] = y_pred_test_rf
-
-    # Gradient Boosting
-
-    gbr = GradientBoostingRegressor(n_estimators=1000, max_depth=5, learning_rate=.1, max_features='sqrt', min_samples_leaf=4, min_samples_split=8)
-    gbr.fit(X_train_std, y_train)
-    y_pred_train_gbr = gbr.predict(X_train_std)
-    y_pred_test_gbr = gbr.predict(X_test_std)
-    r_squared_gbr = gbr.score(X_test_std, y_test)
-    rmse_gbr_train = calc_rmse(y_train, y_pred_train_gbr)
-    rmse_gbr_test = calc_rmse(y_test, y_pred_test_gbr)
-
-    print("GBR RMSE train results: {}".format(rmse_gbr_train))
-    print("GBR RMSE test results: {}".format(rmse_gbr_test))
-
-    # calculate rmse for same month avg units rented
-
-    y_pred_train_same_month = df_agg_train.loc[:, 'same_month_avg_units_rented'].values
-    y_pred_test_same_month = df_agg_test.loc[:, 'same_month_avg_units_rented'].values
-
-    rmse_same_month_train = calc_rmse(y_train, y_pred_train_same_month)
-    rmse_same_month_test = calc_rmse(y_test, y_pred_test_same_month)
-
-    print("Same Month Avg RMSE train results: {}".format(rmse_same_month_train))
-    print("Same Month Avg RMSE test results: {}".format(rmse_same_month_test))
 
 
-    # save the final train/test dfs
-    df_agg_test.to_pickle('./df_agg_test.pkl')
-    df_agg_train.to_pickle('./df_agg_train.pkl')
-
-
-
-
-    '''
-    Next steps for tomorrow:
-    - plots to inspect data more
-        - total revenue over time (see if it changes much the last couple years - if not, could drop year feature)
-        - total units / revenue by rented by product type (show how few products are rented the most). 80/20 rule. CREATE CHART/GRAPH FOR README
-        - correlation matrix / table
-    - example to clean code on wed:
-        - https://github.com/ecgill/flip_risk_indexer
-    '''
 
     '''
     Model testing / tuning results:
