@@ -1,7 +1,3 @@
-Notes:
-Tried to put in construction spending external data - low correlation, little change to model results
-plotted same month avg and looked at correlation - extremely difficult to beat as the correlation with same month avg is .94. ADD THIS TO README!
-
 # Construction Equipment Company Demand Forecasting
 Mike Irvine - Module 2 Capstone Project
 
@@ -10,7 +6,13 @@ August 3, 2018
 Galvanize Data Science Immersive - Denver
 
 ## Executive Summary
-- Text
+- How can a construction equipment rental company in the midwest improve equipment demand forecasting so the right equipment is at the right store location at the right time?
+- The equipment rental company provided five years of invoice data (one invoice per piece of equipment rented), along with supplemental datasets to enrich the invoice data.
+- After EDA, we agreed to focus on company-wide equipment demand for a subset of the large equipment category.
+- 58 features were created after engineering new features and creating dummy variables for the categorical features.
+- Different types of regression models (linear, lasso, random forest, gradient boosting, and an MLP neural network) were used to try to find the best predictor units rented.
+- The random forest model produced the best results on the test dataset, with an R-Squared of .83 and a root mean squared error of 10.46 units rented. These results slightly beat the same month average rmse of 11.19, which indicates there is some added predictive value of using additional features to predict demand, rather than just a simple same month average.
+- There is opportunity to improve the model, but more investigation and analysis is needed.
 
 <img src="https://github.com/mikeirvine/Capstone-Equipment-Rental/blob/master/imgs/Boom_lift.jpg" width="300" height="300"> <img src="https://github.com/mikeirvine/Capstone-Equipment-Rental/blob/master/imgs/scissor_lift.jpg" width="300" height="300">
 
@@ -47,7 +49,7 @@ The data provided includes:
 ### After EDA, we agreed to focus on company-wide equipment demand for a subset of the large equipment category.
 
 #### Equipment Type Analysis:
-- 20 different categories of equipment - 
+- 20 different categories of equipment (category 20 is the large equipment category, making up most the revenue)
 - For product category 20, there are ~60K invoices, which can be aggregated by month by product type
 - 61 product types for category 20 - further analysis revealed that 17 product types make up 80% of the revenue, and 31 product types make up ~95% of the revenue
 <img src="https://github.com/mikeirvine/Capstone-Equipment-Rental/blob/master/imgs/cat_20_rev.png">
@@ -70,7 +72,7 @@ The data provided includes:
 - Aggregating invoices by month and a subset of product category 20 leaves only ~3600 records across the company. Data is too limited to also aggregate by branch office, so model will attempt to predict equipment demand across the company.
 - Since this is a time series model, the train dataset period (Nov 2014 - April 2017) will be used to predict the test dataset period (May 2017 - April 2018)
 
-Only selecting a subset of product category 20 reduced the dataset to ~3600 records after aggregated by product type and month. Key descriptive statistics for the target variable, 'units_rented' below:
+Only selecting a subset of product category 20 reduced the dataset to ~3600 records after aggregating by product type and month. Key descriptive statistics for the target variable, 'units_rented' below:
 
 |Stat |    Value 
 |-------|----------------|
@@ -92,6 +94,7 @@ The invoice dataset had enough information to build the model, but a few new fea
 - Rental type: categorized each invoice as daily, weekly, or monthly
 - Same month, prior year features (avg units rented, avg days rented): given the seasonality of the business, created new features for the avg units rented and avg days rented for each month (e.g., avg units rented and avg days rented for February). Note: to avoid leakage, I only created these features using the train dataset time period (Nov 2014 - April 2017).
 - Categorical features: created categorical features for each month and the 30 product types
+- External data: added national construction spending data (as the industry is highly correlated to the economy), but there was little correlation with units rented so the feature was removed
 
 The final dataset for modeling had 58 features, mostly due to the categorical features.
 
