@@ -14,12 +14,12 @@ from sklearn.preprocessing import StandardScaler
 
 def load_and_standardize_data():
     ''' loads and standardizes data '''
-    df_agg = pd.read_pickle('./df_agg.pkl')
-    df_agg_test = df_agg.loc[df_agg['contract_start_year_month'] >= '2017-05-01', :]
-    df_agg_train = df_agg.loc[df_agg['contract_start_year_month'] < '2017-05-01', :]
-    X_train = df_agg_train.drop(['units_rented', 'contract_start_year_month', 'rental_revenue', 'total_days_rented', 'avg_price_per_day'], axis=1).values
+    df_agg = pd.read_pickle('/Users/mwirvine/Galvanize/dsi-immersive/Capstone-Equipment-Rental-Data/df_agg.pkl')
+    df_agg_test = df_agg.loc[df_agg['month'] >= '2017-05-01', :]
+    df_agg_train = df_agg.loc[df_agg['month'] < '2017-05-01', :]
+    X_train = df_agg_train.drop(['units_rented', 'month', 'rental_revenue', 'total_days_rented', 'avg_price_per_day'], axis=1).values
     y_train = df_agg_train['units_rented'].values
-    X_test = df_agg_test.drop(['units_rented', 'contract_start_year_month', 'rental_revenue', 'total_days_rented', 'avg_price_per_day'], axis=1).values
+    X_test = df_agg_test.drop(['units_rented', 'month', 'rental_revenue', 'total_days_rented', 'avg_price_per_day'], axis=1).values
     y_test = df_agg_test['units_rented'].values
 
     standardizer = StandardScaler()
